@@ -2,25 +2,34 @@ package dev.architectstudio.client.screen;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 public final class ArchitectStudioScreen extends Screen {
-    private static final int PANEL = 0xF0181722;
-    private static final int PANEL_LIGHT = 0xFF242132;
+    private static final int BACKGROUND = 0xF014121D;
+    private static final int HEADER = 0xFF211C2D;
+    private static final int SIDEBAR = 0xFF191622;
+    private static final int CARD = 0xFF252132;
+    private static final int CARD_HOVER = 0xFF332943;
     private static final int PURPLE = 0xFFB66CFF;
-    private static final int MUTED = 0xFFAAA5B8;
+    private static final int TEXT = 0xFFF4F0FA;
+    private static final int MUTED = 0xFFAAA2B8;
+
+    private static final String[] SECTION_IDS = {
+            "workspace", "selection", "annotations", "brushes", "blocks", "layers"
+    };
+    private static final String[] SECTION_NAMES = {
+            "Рабочее место", "Выделение", "Пометки", "Кисти", "Блоки", "Слои"
+    };
 
     private String activeSection = "workspace";
-
-    private int panelLeft;
-    private int panelTop;
-    private int panelWidth;
-    private int panelHeight;
-    private int contentX;
-    private int contentWidth;
+    private boolean gridEnabled = true;
+    private boolean snapEnabled = true;
+    private boolean previewEnabled = true;
+    private int panelLeft, panelTop, panelWidth, panelHeight, sidebarWidth;
+    private int contentX, contentY, contentWidth;
+    private int closeX, closeY, closeWidth, closeHeight;
 
     public ArchitectStudioScreen() {
         super(Component.literal("ArchitectStudio"));
@@ -28,173 +37,209 @@ public final class ArchitectStudioScreen extends Screen {
 
     @Override
     protected void init() {
-        // Keep the whole editor inside the usable game window.
-        panelWidth = Math.min(760, Math.max(300, this.width - 24));
-        panelHeight = Math.min(430, Math.max(260, this.height - 24));
-        panelLeft = (this.width - panelWidth) / 2;
-        panelTop = (this.height - panelHeight) / 2;
-
-        int sidebarWidth = Math.min(160, Math.max(126, panelWidth / 4));
-        int sidebarX = panelLeft + 12;
-        int sidebarY = panelTop + 88;
-        int navWidth = sidebarWidth - 20;
-        int navHeight = 28;
-        int navGap = 7;
-
-        addRenderableWidget(navButton("Рабочее место", "workspace",
-                sidebarX, sidebarY, navWidth, navHeight));
-        addRenderableWidget(navButton("Выделение", "selection",
-                sidebarX, sidebarY + (navHeight + navGap), navWidth, navHeight));
-        addRenderableWidget(navButton("Пометки", "annotations",
-                sidebarX, sidebarY + 2 * (navHeight + navGap), navWidth, navHeight));
-        addRenderableWidget(navButton("Кисти", "brushes",
-                sidebarX, sidebarY + 3 * (navHeight + navGap), navWidth, navHeight));
-        addRenderableWidget(navButton("Блоки", "blocks",
-                sidebarX, sidebarY + 4 * (navHeight + navGap), navWidth, navHeight));
-        addRenderableWidget(navButton("Слои", "layers",
-                sidebarX, sidebarY + 5 * (navHeight + navGap), navWidth, navHeight));
-
-        contentX = panelLeft + sidebarWidth + 24;
-        contentWidth = panelLeft + panelWidth - contentX - 18;
-
-        addRenderableWidget(Button.builder(Component.literal("Закрыть"), button -> onClose())
-                .bounds(panelLeft + panelWidth - 104, panelTop + panelHeight - 34, 88, 22)
-                .build());
-    }
-
-    private Button navButton(String label, String section, int x, int y, int width, int height) {
-        return Button.builder(Component.literal(label), button -> {
-            activeSection = section;
-            clearWidgets();
-            init();
-        }).bounds(x, y, width, height).build();
+        panelWidth = Math.min(900, Math.max(320, width - 24));
+        panelHeight = Math.min(540, Math.max(280, height - 24));
+        panelLeft = (width - panelWidth) / 2;
+        panelTop = (height - panelHeight) / 2;
+        sidebarWidth = Math.min(190, Math.max(112, panelWidth / 4));
+        contentX = panelLeft + sidebarWidth + 26;
+        contentY = panelTop + 112;
+        contentWidth = panelLeft + panelWidth - contentX - 22;
+        closeWidth = 82;
+        closeHeight = 22;
+        closeX = panelLeft + panelWidth - closeWidth - 18;
+        closeY = panelTop + panelHeight - closeHeight - 14;
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics, mouseX, mouseY, partialTick);
+        int right = panelLeft + panelWidth;
+        int bottom = panelTop + panelHeight;
 
-        int left = panelLeft;
-        int top = panelTop;
-        int right = left + panelWidth;
-        int bottom = top + panelHeight;
+        graphics.fill(panelLeft, panelTop, right, bottom, BACKGROUND);
+        graphics.fill(panelLeft, panelTop, right, panelTop + 68, HEADER);
+        graphics.fill(panelLeft, panelTop + 68, panelLeft + sidebarWidth, bottom, SIDEBAR);
+        graphics.fill(panelLeft, panelTop + 67, right, panelTop + 69, PURPLE);
 
-        graphics.fill(left, top, right, bottom, PANEL);
-        graphics.fill(left, top, right, top + 58, 0xFF211D30);
-        graphics.fill(left + 1, top + 58, left + 3, bottom - 1, PURPLE);
-        graphics.fill(contentX - 12, top + 68, contentX - 11, bottom - 12, 0xFF494052);
+        graphics.drawString(font, "ARCHITECT", panelLeft + 22, panelTop + 18, TEXT, false);
+        graphics.drawString(font, "STUDIO", panelLeft + 98, panelTop + 18, PURPLE, false);
+        graphics.drawString(font, "BUILDING WORKSPACE  /  CLIENT EDITOR  /  v0.3.1",
+                panelLeft + 22, panelTop + 42, MUTED, false);
 
-        graphics.drawString(this.font, "ARCHITECT", left + 20, top + 17, 0xFFFFFFFF, false);
-        graphics.drawString(this.font, "STUDIO", left + 91, top + 17, PURPLE, false);
-        graphics.drawString(this.font, "CLIENT BUILDING TOOLKIT  •  v0.2.1", left + 20, top + 39, MUTED, false);
+        graphics.drawString(font, "ИНСТРУМЕНТЫ", panelLeft + 16, panelTop + 86, PURPLE, false);
+        for (int i = 0; i < SECTION_IDS.length; i++) {
+            int x = panelLeft + 10;
+            int y = panelTop + 108 + i * 38;
+            int w = sidebarWidth - 20;
+            boolean selected = activeSection.equals(SECTION_IDS[i]);
+            boolean hovered = inside(mouseX, mouseY, x, y, w, 30);
+            if (selected || hovered) {
+                graphics.fill(x, y, x + w, y + 30, selected ? CARD_HOVER : CARD);
+            }
+            if (selected) graphics.fill(x, y, x + 3, y + 30, PURPLE);
+            graphics.drawString(font, SECTION_NAMES[i], x + 12, y + 11,
+                    selected ? TEXT : MUTED, false);
+        }
 
-        graphics.drawString(this.font, "ИНСТРУМЕНТЫ", left + 14, top + 76, PURPLE, false);
-        graphics.drawString(this.font, sectionTitle(), contentX, top + 82, 0xFFFFFFFF, false);
-        graphics.fill(contentX, top + 102, right - 18, top + 103, 0xFF494052);
+        graphics.fill(contentX - 14, panelTop + 84, contentX - 13, bottom - 52, 0xFF453A52);
+        graphics.drawString(font, sectionTitle(), contentX, panelTop + 88, TEXT, false);
+        graphics.drawString(font, "Изменения и инструменты отображаются здесь",
+                contentX, panelTop + 101, MUTED, false);
+        graphics.fill(contentX, panelTop + 124, right - 18, panelTop + 125, 0xFF453A52);
 
-        renderSection(graphics, contentX, top + 120, contentWidth, bottom - top);
+        renderSection(graphics, mouseX, mouseY);
 
-        graphics.drawString(this.font, "Right Shift — открыть редактор",
-                contentX, bottom - 23, MUTED, false);
+        graphics.drawString(font, "Right Shift  ·  открыть редактор", contentX,
+                bottom - 24, MUTED, false);
+        boolean closeHover = inside(mouseX, mouseY, closeX, closeY, closeWidth, closeHeight);
+        graphics.fill(closeX, closeY, closeX + closeWidth, closeY + closeHeight,
+                closeHover ? CARD_HOVER : CARD);
+        graphics.drawCenteredString(font, "Закрыть", closeX + closeWidth / 2,
+                closeY + 7, TEXT);
+    }
 
-        super.render(graphics, mouseX, mouseY, partialTick);
+    private void renderSection(GuiGraphics graphics, int mouseX, int mouseY) {
+        int gap = 12;
+        int cardWidth = Math.max(100, (contentWidth - gap) / 2);
+        int cardHeight = 76;
+        int y1 = contentY;
+        int y2 = y1 + cardHeight + 12;
+        switch (activeSection) {
+            case "selection" -> {
+                drawCard(graphics, contentX, y1, contentWidth, cardHeight, "Область выделения",
+                        "Ручное выделение блоков и настройка границ", mouseX, mouseY);
+                drawCard(graphics, contentX, y2, cardWidth, cardHeight, "Копировать / вставить",
+                        "Подготовка операций с выбранной областью", mouseX, mouseY);
+                drawCard(graphics, contentX + cardWidth + gap, y2, cardWidth, cardHeight,
+                        "Трансформация", "Перемещение и поворот выделения", mouseX, mouseY);
+            }
+            case "annotations" -> {
+                drawCard(graphics, contentX, y1, contentWidth, cardHeight, "3D-пометки",
+                        "Линии, стрелки, текст и цветные маркеры", mouseX, mouseY);
+                drawCard(graphics, contentX, y2, cardWidth, cardHeight, "Измерения",
+                        "Линейки, расстояния и размеры", mouseX, mouseY);
+                drawCard(graphics, contentX + cardWidth + gap, y2, cardWidth, cardHeight,
+                        "Слои пометок", "Группировка и видимость заметок", mouseX, mouseY);
+            }
+            case "brushes" -> {
+                drawCard(graphics, contentX, y1, contentWidth, cardHeight, "Ручные кисти",
+                        "Настройка радиуса, формы и силы", mouseX, mouseY);
+                drawCard(graphics, contentX, y2, cardWidth, cardHeight, "Заливка",
+                        "Ручное заполнение выбранной области", mouseX, mouseY);
+                drawCard(graphics, contentX + cardWidth + gap, y2, cardWidth, cardHeight,
+                        "Градиент", "Переход между материалами", mouseX, mouseY);
+            }
+            case "blocks" -> {
+                drawCard(graphics, contentX, y1, contentWidth, cardHeight, "Каталог блоков",
+                        "Поиск стандартных и модифицированных блоков", mouseX, mouseY);
+                drawCard(graphics, contentX, y2, cardWidth, cardHeight, "Избранное",
+                        "Быстрый доступ к материалам", mouseX, mouseY);
+                drawCard(graphics, contentX + cardWidth + gap, y2, cardWidth, cardHeight,
+                        "Палитры", "Наборы блоков для проекта", mouseX, mouseY);
+            }
+            case "layers" -> {
+                drawCard(graphics, contentX, y1, contentWidth, cardHeight, "Рабочие слои",
+                        "Разделение проекта на независимые части", mouseX, mouseY);
+                drawCard(graphics, contentX, y2, cardWidth, cardHeight, "Группы",
+                        "Объединение элементов проекта", mouseX, mouseY);
+                drawCard(graphics, contentX + cardWidth + gap, y2, cardWidth, cardHeight,
+                        "История действий", "Основа для Undo / Redo", mouseX, mouseY);
+            }
+            default -> {
+                drawCard(graphics, contentX, y1, contentWidth, cardHeight,
+                        "Добро пожаловать в ArchitectStudio",
+                        "Ручное редактирование мира — без генерации построек", mouseX, mouseY);
+                drawCard(graphics, contentX, y2, cardWidth, cardHeight, "Координаты игрока",
+                        playerPosition(), mouseX, mouseY);
+                drawCard(graphics, contentX + cardWidth + gap, y2, cardWidth, cardHeight,
+                        "Измерение", dimensionName(), mouseX, mouseY);
+                int toggleY = y2 + cardHeight + 18;
+                drawToggle(graphics, contentX, toggleY, "Сетка", gridEnabled);
+                drawToggle(graphics, contentX + 118, toggleY, "Привязка", snapEnabled);
+                drawToggle(graphics, contentX + 248, toggleY, "Предпросмотр", previewEnabled);
+            }
+        }
+    }
+
+    private void drawCard(GuiGraphics graphics, int x, int y, int w, int h,
+                          String title, String subtitle, int mouseX, int mouseY) {
+        boolean hover = inside(mouseX, mouseY, x, y, w, h);
+        graphics.fill(x, y, x + w, y + h, hover ? CARD_HOVER : CARD);
+        graphics.fill(x, y, x + 3, y + h, PURPLE);
+        graphics.drawString(font, title, x + 12, y + 16, TEXT, false);
+        graphics.drawString(font, subtitle, x + 12, y + 43, MUTED, false);
+    }
+
+    private void drawToggle(GuiGraphics graphics, int x, int y, String label, boolean enabled) {
+        graphics.fill(x, y, x + 104, y + 28, CARD);
+        graphics.drawString(font, label, x + 8, y + 10, TEXT, false);
+        graphics.fill(x + 78, y + 7, x + 96, y + 21, enabled ? PURPLE : 0xFF625B6D);
+        graphics.fill(x + (enabled ? 87 : 80), y + 9, x + (enabled ? 94 : 87), y + 19, TEXT);
     }
 
     private String sectionTitle() {
-        return switch (activeSection) {
-            case "selection" -> "ВЫДЕЛЕНИЕ";
-            case "annotations" -> "ПОМЕТКИ И РИСОВАНИЕ";
-            case "brushes" -> "КИСТИ";
-            case "blocks" -> "БИБЛИОТЕКА БЛОКОВ";
-            case "layers" -> "СЛОИ";
-            default -> "РАБОЧЕЕ МЕСТО";
-        };
-    }
-
-    private void renderSection(GuiGraphics graphics, int x, int y, int width, int bottom) {
-        int gap = 12;
-        int cardWidth = Math.max(90, (width - gap) / 2);
-        int cardHeight = 66;
-        int row2 = y + cardHeight + 12;
-
-        switch (activeSection) {
-            case "selection" -> {
-                drawCard(graphics, x, y, width, cardHeight, "Инструмент выделения",
-                        "Рамка выделения и настройка границ");
-                drawCard(graphics, x, row2, cardWidth, cardHeight, "Копировать",
-                        "Буфер выбранных блоков");
-                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
-                        "Переместить", "Предпросмотр перемещения");
-            }
-            case "annotations" -> {
-                drawCard(graphics, x, y, width, cardHeight, "3D-пометки",
-                        "Стрелки, линии, текст и цветные маркеры");
-                drawCard(graphics, x, row2, cardWidth, cardHeight, "Слои пометок",
-                        "Группировка и видимость");
-                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
-                        "Измерения", "Линейки и размеры");
-            }
-            case "brushes" -> {
-                drawCard(graphics, x, y, width, cardHeight, "Ручные кисти",
-                        "Радиус, форма и сила воздействия");
-                drawCard(graphics, x, row2, cardWidth, cardHeight, "Заливка",
-                        "Настройка области");
-                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
-                        "Градиент", "Направление и диапазон");
-            }
-            case "blocks" -> {
-                drawCard(graphics, x, y, width, cardHeight, "Каталог блоков",
-                        "Поиск, избранное и категории");
-                drawCard(graphics, x, row2, cardWidth, cardHeight, "Избранное",
-                        "Быстрый доступ");
-                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
-                        "Палитры", "Наборы материалов");
-            }
-            case "layers" -> {
-                drawCard(graphics, x, y, width, cardHeight, "Рабочие слои",
-                        "Разделение элементов проекта");
-                drawCard(graphics, x, row2, cardWidth, cardHeight, "Группы",
-                        "Объединение элементов");
-                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
-                        "История", "Основа Undo / Redo");
-            }
-            default -> {
-                drawCard(graphics, x, y, width, cardHeight, "Добро пожаловать в ArchitectStudio",
-                        "Ручное редактирование — без генерации построек");
-                drawCard(graphics, x, row2, cardWidth, cardHeight, "Состояние игры",
-                        playerPosition());
-                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
-                        "Измерение", dimensionName());
-            }
+        for (int i = 0; i < SECTION_IDS.length; i++) {
+            if (SECTION_IDS[i].equals(activeSection)) return SECTION_NAMES[i].toUpperCase();
         }
-    }
-
-    private void drawCard(GuiGraphics graphics, int x, int y, int width, int height,
-                          String title, String description) {
-        graphics.fill(x, y, x + width, y + height, PANEL_LIGHT);
-        graphics.fill(x, y, x + 3, y + height, PURPLE);
-        graphics.drawString(this.font, title, x + 10, y + 12, 0xFFFFFFFF, false);
-        graphics.drawString(this.font, description, x + 10, y + 36, MUTED, false);
+        return "РАБОЧЕЕ МЕСТО";
     }
 
     private String playerPosition() {
-        if (Minecraft.getInstance().player == null) {
-            return "Игрок не найден";
-        }
-        var pos = Minecraft.getInstance().player.blockPosition();
-        return "X: " + pos.getX() + " Y: " + pos.getY() + " Z: " + pos.getZ();
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return "Игрок не найден";
+        var pos = mc.player.blockPosition();
+        return "X " + pos.getX() + "   Y " + pos.getY() + "   Z " + pos.getZ();
     }
 
     private String dimensionName() {
-        if (Minecraft.getInstance().level == null) {
-            return "Нет активного мира";
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return "Нет активного мира";
+        ResourceLocation id = mc.level.dimension().location();
+        return id.toString();
+    }
+
+    private boolean inside(double mx, double my, int x, int y, int w, int h) {
+        return mx >= x && mx < x + w && my >= y && my < y + h;
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
+        if (inside(mouseX, mouseY, closeX, closeY, closeWidth, closeHeight)) {
+            onClose();
+            return true;
         }
-        ResourceLocation location = Minecraft.getInstance().level.dimension().location();
-        return location.toString();
+        for (int i = 0; i < SECTION_IDS.length; i++) {
+            int x = panelLeft + 10;
+            int y = panelTop + 108 + i * 38;
+            if (inside(mouseX, mouseY, x, y, sidebarWidth - 20, 30)) {
+                activeSection = SECTION_IDS[i];
+                return true;
+            }
+        }
+        if ("workspace".equals(activeSection)) {
+            int y = contentY + 2 * 76 + 30;
+            if (inside(mouseX, mouseY, contentX, y, 104, 28)) gridEnabled = !gridEnabled;
+            else if (inside(mouseX, mouseY, contentX + 118, y, 104, 28)) snapEnabled = !snapEnabled;
+            else if (inside(mouseX, mouseY, contentX + 248, y, 104, 28)) previewEnabled = !previewEnabled;
+            else return super.mouseClicked(mouseX, mouseY, button);
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == 256) {
+            onClose();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
     public boolean isPauseScreen() {
-        return false;
+        return true;
     }
 }
