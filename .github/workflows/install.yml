@@ -33,13 +33,13 @@ jobs:
           cp -a unpacked/ArchitectStudio-Next/. .
           rm -rf unpacked ArchitectStudio-Next-source.zip
 
-      - name: Save project files to GitHub
+      - name: Save source files to GitHub
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add -A -- . ':!.github/workflows/build.yml'
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo "No source changes to commit"
           else
             git commit -m "Install ArchitectStudio project structure"
             git push
