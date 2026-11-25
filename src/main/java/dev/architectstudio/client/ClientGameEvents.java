@@ -5,12 +5,12 @@ import dev.architectstudio.client.screen.ArchitectStudioScreen;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 
-@Mod.EventBusSubscriber(
+@EventBusSubscriber(
         modid = ArchitectStudio.MOD_ID,
-        bus = Mod.EventBusSubscriber.Bus.GAME,
+        bus = EventBusSubscriber.Bus.GAME,
         value = Dist.CLIENT
 )
 public final class ClientGameEvents {
