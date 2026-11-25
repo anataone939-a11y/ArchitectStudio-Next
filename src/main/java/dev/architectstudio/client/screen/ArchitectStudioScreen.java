@@ -15,63 +15,87 @@ public final class ArchitectStudioScreen extends Screen {
 
     private String activeSection = "workspace";
 
+    private int panelLeft;
+    private int panelTop;
+    private int panelWidth;
+    private int panelHeight;
+    private int contentX;
+    private int contentWidth;
+
     public ArchitectStudioScreen() {
         super(Component.literal("ArchitectStudio"));
     }
 
     @Override
     protected void init() {
-        int left = (this.width - 760) / 2;
-        int top = (this.height - 430) / 2;
-        int sidebarX = left + 18;
-        int sidebarY = top + 92;
+        // Keep the whole editor inside the usable game window.
+        panelWidth = Math.min(760, Math.max(300, this.width - 24));
+        panelHeight = Math.min(430, Math.max(260, this.height - 24));
+        panelLeft = (this.width - panelWidth) / 2;
+        panelTop = (this.height - panelHeight) / 2;
 
-        addRenderableWidget(navButton("Рабочее место", "workspace", sidebarX, sidebarY));
-        addRenderableWidget(navButton("Выделение", "selection", sidebarX, sidebarY + 38));
-        addRenderableWidget(navButton("Пометки", "annotations", sidebarX, sidebarY + 76));
-        addRenderableWidget(navButton("Кисти", "brushes", sidebarX, sidebarY + 114));
-        addRenderableWidget(navButton("Блоки", "blocks", sidebarX, sidebarY + 152));
-        addRenderableWidget(navButton("Слои", "layers", sidebarX, sidebarY + 190));
+        int sidebarWidth = Math.min(160, Math.max(126, panelWidth / 4));
+        int sidebarX = panelLeft + 12;
+        int sidebarY = panelTop + 88;
+        int navWidth = sidebarWidth - 20;
+        int navHeight = 28;
+        int navGap = 7;
+
+        addRenderableWidget(navButton("Рабочее место", "workspace",
+                sidebarX, sidebarY, navWidth, navHeight));
+        addRenderableWidget(navButton("Выделение", "selection",
+                sidebarX, sidebarY + (navHeight + navGap), navWidth, navHeight));
+        addRenderableWidget(navButton("Пометки", "annotations",
+                sidebarX, sidebarY + 2 * (navHeight + navGap), navWidth, navHeight));
+        addRenderableWidget(navButton("Кисти", "brushes",
+                sidebarX, sidebarY + 3 * (navHeight + navGap), navWidth, navHeight));
+        addRenderableWidget(navButton("Блоки", "blocks",
+                sidebarX, sidebarY + 4 * (navHeight + navGap), navWidth, navHeight));
+        addRenderableWidget(navButton("Слои", "layers",
+                sidebarX, sidebarY + 5 * (navHeight + navGap), navWidth, navHeight));
+
+        contentX = panelLeft + sidebarWidth + 24;
+        contentWidth = panelLeft + panelWidth - contentX - 18;
 
         addRenderableWidget(Button.builder(Component.literal("Закрыть"), button -> onClose())
-                .bounds(left + 650, top + 386, 92, 24)
+                .bounds(panelLeft + panelWidth - 104, panelTop + panelHeight - 34, 88, 22)
                 .build());
     }
 
-    private Button navButton(String label, String section, int x, int y) {
+    private Button navButton(String label, String section, int x, int y, int width, int height) {
         return Button.builder(Component.literal(label), button -> {
-            ArchitectStudioScreen next = new ArchitectStudioScreen();
-            next.activeSection = section;
-            Minecraft.getInstance().setScreen(next);
-        }).bounds(x, y, 142, 30).build();
+            activeSection = section;
+            clearWidgets();
+            init();
+        }).bounds(x, y, width, height).build();
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics, mouseX, mouseY, partialTick);
 
-        int left = (this.width - 760) / 2;
-        int top = (this.height - 430) / 2;
-        int right = left + 760;
-        int bottom = top + 430;
+        int left = panelLeft;
+        int top = panelTop;
+        int right = left + panelWidth;
+        int bottom = top + panelHeight;
 
         graphics.fill(left, top, right, bottom, PANEL);
         graphics.fill(left, top, right, top + 58, 0xFF211D30);
-        graphics.fill(left + 170, top + 72, right - 18, bottom - 54, 0xAA111018);
         graphics.fill(left + 1, top + 58, left + 3, bottom - 1, PURPLE);
+        graphics.fill(contentX - 12, top + 68, contentX - 11, bottom - 12, 0xFF494052);
 
         graphics.drawString(this.font, "ARCHITECT", left + 20, top + 17, 0xFFFFFFFF, false);
         graphics.drawString(this.font, "STUDIO", left + 91, top + 17, PURPLE, false);
-        graphics.drawString(this.font, "CLIENT BUILDING TOOLKIT  •  v0.2.0", left + 20, top + 39, MUTED, false);
+        graphics.drawString(this.font, "CLIENT BUILDING TOOLKIT  •  v0.2.1", left + 20, top + 39, MUTED, false);
 
-        graphics.drawString(this.font, "ИНСТРУМЕНТЫ", left + 22, top + 76, PURPLE, false);
-        graphics.drawString(this.font, sectionTitle(), left + 190, top + 88, 0xFFFFFFFF, false);
-        graphics.fill(left + 190, top + 108, right - 38, top + 109, 0xFF494052);
+        graphics.drawString(this.font, "ИНСТРУМЕНТЫ", left + 14, top + 76, PURPLE, false);
+        graphics.drawString(this.font, sectionTitle(), contentX, top + 82, 0xFFFFFFFF, false);
+        graphics.fill(contentX, top + 102, right - 18, top + 103, 0xFF494052);
 
-        renderSection(graphics, left, top);
+        renderSection(graphics, contentX, top + 120, contentWidth, bottom - top);
 
-        graphics.drawString(this.font, "Right Shift — открыть редактор", left + 190, bottom - 31, MUTED, false);
-        graphics.drawString(this.font, "Мир остаётся активным", left + 500, bottom - 31, MUTED, false);
+        graphics.drawString(this.font, "Right Shift — открыть редактор",
+                contentX, bottom - 23, MUTED, false);
 
         super.render(graphics, mouseX, mouseY, partialTick);
     }
@@ -87,48 +111,60 @@ public final class ArchitectStudioScreen extends Screen {
         };
     }
 
-    private void renderSection(GuiGraphics graphics, int left, int top) {
-        int x = left + 190;
-        int y = top + 130;
+    private void renderSection(GuiGraphics graphics, int x, int y, int width, int bottom) {
+        int gap = 12;
+        int cardWidth = Math.max(90, (width - gap) / 2);
+        int cardHeight = 66;
+        int row2 = y + cardHeight + 12;
 
         switch (activeSection) {
             case "selection" -> {
-                drawCard(graphics, x, y, 520, 76, "Инструмент выделения",
-                        "Следующий этап: рамка выделения и настройка границ");
-                drawCard(graphics, x, y + 90, 250, 76, "Копировать", "Подготовим буфер выбранных блоков");
-                drawCard(graphics, x + 270, y + 90, 250, 76, "Переместить", "Перемещение с визуальным предпросмотром");
+                drawCard(graphics, x, y, width, cardHeight, "Инструмент выделения",
+                        "Рамка выделения и настройка границ");
+                drawCard(graphics, x, row2, cardWidth, cardHeight, "Копировать",
+                        "Буфер выбранных блоков");
+                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
+                        "Переместить", "Предпросмотр перемещения");
             }
             case "annotations" -> {
-                drawCard(graphics, x, y, 520, 76, "3D-пометки",
-                        "Стрелки, линии, текстовые заметки и цветные маркеры");
-                drawCard(graphics, x, y + 90, 250, 76, "Слои пометок", "Группировка и видимость");
-                drawCard(graphics, x + 270, y + 90, 250, 76, "Измерения", "Линейки и размеры");
+                drawCard(graphics, x, y, width, cardHeight, "3D-пометки",
+                        "Стрелки, линии, текст и цветные маркеры");
+                drawCard(graphics, x, row2, cardWidth, cardHeight, "Слои пометок",
+                        "Группировка и видимость");
+                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
+                        "Измерения", "Линейки и размеры");
             }
             case "brushes" -> {
-                drawCard(graphics, x, y, 520, 76, "Ручные кисти",
-                        "Настраиваемый радиус, форма и сила воздействия");
-                drawCard(graphics, x, y + 90, 250, 76, "Заливка", "Параметры будут добавлены позже");
-                drawCard(graphics, x + 270, y + 90, 250, 76, "Градиент", "Контроль направления и диапазона");
+                drawCard(graphics, x, y, width, cardHeight, "Ручные кисти",
+                        "Радиус, форма и сила воздействия");
+                drawCard(graphics, x, row2, cardWidth, cardHeight, "Заливка",
+                        "Настройка области");
+                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
+                        "Градиент", "Направление и диапазон");
             }
             case "blocks" -> {
-                drawCard(graphics, x, y, 520, 76, "Каталог блоков",
-                        "Поиск, избранное, категории и палитры материалов");
-                drawCard(graphics, x, y + 90, 250, 76, "Избранное", "Быстрый доступ к материалам");
-                drawCard(graphics, x + 270, y + 90, 250, 76, "Палитры", "Собственные наборы блоков");
+                drawCard(graphics, x, y, width, cardHeight, "Каталог блоков",
+                        "Поиск, избранное и категории");
+                drawCard(graphics, x, row2, cardWidth, cardHeight, "Избранное",
+                        "Быстрый доступ");
+                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
+                        "Палитры", "Наборы материалов");
             }
             case "layers" -> {
-                drawCard(graphics, x, y, 520, 76, "Рабочие слои",
-                        "Разделение элементов проекта и управление видимостью");
-                drawCard(graphics, x, y + 90, 250, 76, "Группы", "Объединение элементов");
-                drawCard(graphics, x + 270, y + 90, 250, 76, "История", "Основа для Undo / Redo");
+                drawCard(graphics, x, y, width, cardHeight, "Рабочие слои",
+                        "Разделение элементов проекта");
+                drawCard(graphics, x, row2, cardWidth, cardHeight, "Группы",
+                        "Объединение элементов");
+                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
+                        "История", "Основа Undo / Redo");
             }
             default -> {
-                drawCard(graphics, x, y, 520, 76, "Добро пожаловать в ArchitectStudio",
-                        "Редактор ручного строительства — без генерации готовых построек");
-                drawCard(graphics, x, y + 90, 250, 76, "Состояние игры", playerPosition());
-                drawCard(graphics, x + 270, y + 90, 250, 76, "Измерение", dimensionName());
-                drawCard(graphics, x, y + 180, 520, 76, "Следующий инструмент",
-                        "Начнём с выделения области и визуального предпросмотра");
+                drawCard(graphics, x, y, width, cardHeight, "Добро пожаловать в ArchitectStudio",
+                        "Ручное редактирование — без генерации построек");
+                drawCard(graphics, x, row2, cardWidth, cardHeight, "Состояние игры",
+                        playerPosition());
+                drawCard(graphics, x + cardWidth + gap, row2, cardWidth, cardHeight,
+                        "Измерение", dimensionName());
             }
         }
     }
@@ -137,8 +173,8 @@ public final class ArchitectStudioScreen extends Screen {
                           String title, String description) {
         graphics.fill(x, y, x + width, y + height, PANEL_LIGHT);
         graphics.fill(x, y, x + 3, y + height, PURPLE);
-        graphics.drawString(this.font, title, x + 14, y + 14, 0xFFFFFFFF, false);
-        graphics.drawString(this.font, description, x + 14, y + 38, MUTED, false);
+        graphics.drawString(this.font, title, x + 10, y + 12, 0xFFFFFFFF, false);
+        graphics.drawString(this.font, description, x + 10, y + 36, MUTED, false);
     }
 
     private String playerPosition() {
@@ -146,7 +182,7 @@ public final class ArchitectStudioScreen extends Screen {
             return "Игрок не найден";
         }
         var pos = Minecraft.getInstance().player.blockPosition();
-        return "X: " + pos.getX() + "   Y: " + pos.getY() + "   Z: " + pos.getZ();
+        return "X: " + pos.getX() + " Y: " + pos.getY() + " Z: " + pos.getZ();
     }
 
     private String dimensionName() {
